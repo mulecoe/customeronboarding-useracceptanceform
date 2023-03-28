@@ -1,0 +1,6 @@
+sfdc:
+  user: "dineshdini075@wise-hawk-jkfgkz.com"
+  password: "Nous@1234"
+  secToken: "90F8dAcOEmCqWvUS5ffh2ZId"
+  object: "Account"
+  aggregratorapiurl: "http://customeronboarding-salesforce-api.sg-s1.cloudhub.io/api/lending/loanapplicant"

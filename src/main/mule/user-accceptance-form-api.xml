@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+	<flow name="getForm_Flow" doc:id="7a017e56-5819-4e7c-98f1-69c5c580b24f" >
+		<set-variable value='#[attributes.scheme ++ "://" ++ attributes.headers.host]' doc:name="host" doc:id="ef4513aa-8bf3-4993-85a8-94fb7fdb2d82" variableName="host"/>
+		<ee:transform doc:name="prepare input for decryption" doc:id="0167c7c6-8450-490b-9ff5-5357e39d16d2">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+	uuid : attributes.queryParams.formid
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables />
+		</ee:transform>
+		<flow-ref doc:name="decrypt - get form idf payload" doc:id="c14d4f44-3327-4dd4-9911-2299456e8c76" name="pgp-decryption-flow" />
+		<http:request method="GET" doc:name="Request to aggrerator api" doc:id="54283e3e-4469-4801-8540-12d2976ec29c" url="${sfdc.aggregratorapiurl}" target="sfresponse">
+			<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"id" : payload.uniqueid
+}]]]></http:query-params>
+		</http:request>
+		<set-variable value="#[%dw 2.0
+output application/java
+---
+vars.sfresponse]" doc:name="vars.sfresponse" doc:id="e97d0034-6d92-43e7-9f46-fb486aa1068b" variableName="sfresponse"/>
+		<ee:transform doc:name="Transform Message" doc:id="e364f0bf-7508-4dcf-aa65-38f872e23524" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+vars.host ++ '/api/nous/mulesoftforms/submit']]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<parse-template doc:name="forms\customer-onboarding-user-acceptance.html" doc:id="d16d0038-7e05-4906-bbcb-491c8f8cdcc8" location="forms\customer-onboarding-user-acceptance.html"/>
+		<logger level="INFO" doc:name="Logger" doc:id="9f2592a2-851f-465b-85ef-41095b6a7983" message="#[payload]"/>
+	</flow>
+	<flow name="submit_Flow" doc:id="b4c7e3c0-a67e-4055-a265-2f2a32da3bbe" >
+		<ee:transform doc:name="dw payload" doc:id="d75a5fe0-35a1-4b37-851d-59eabf37e1de" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/dw
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="json payload" doc:id="fb03abfa-1620-4c92-bf47-7bd4bad52dd3" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="2414f3c2-d47b-488a-b6d3-17f188583dfb" message="#[payload]"/>
+		<choice doc:name="Check for Terms and Condition flag" doc:id="0691e356-72e8-4b5c-95ba-4e645c824077" >
+			<when expression="#[(payload.Terms_of_Service == 'True') and (payload.Terms_and_Conditions  == 'True')]">
+				<ee:transform doc:name="create SF input" doc:id="177d2083-5f51-4016-a5c4-505d28dd14d0" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+[{
+    Id: payload.ApplicationNumber,
+    Status__c : "Account Activated"
+}]]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<salesforce:update doc:name="Update status" doc:id="21f5b775-fcb1-4957-b161-3bf2b644fefc" config-ref="Salesforce_Config" type="Account"/>
+				<logger level="INFO" doc:name="Log payload" doc:id="caa244b8-7dd7-47bc-a801-21a64324bd86" message="#[payload]" />
+				<ee:transform doc:name="Success" doc:id="1618fd02-aaaa-425b-93c7-c5edd67e46f0">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+"Thanks You for Accepting the Terms and Conditions, Private Policy."]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<parse-template doc:name="forms\user-acceptance-landingpage.html" doc:id="bec351d9-5647-48fc-abb8-dbe8c6ed9876" location="forms\user-acceptance-landingpage.html"/>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Log error" doc:id="d5900980-34a6-434d-bc19-fcbadf0e2589" message='#["nothing to update"]'/>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="Logger" doc:id="7e3000c9-0758-4472-8ab7-43d1366a1b48" message="#[payload]"/>
+	</flow>
+	<flow name="generate-form-link" doc:id="2b78f28e-c9a6-4920-aa4d-96928cb526e9" >
+		<set-variable value='#[attributes.scheme ++ "://" ++ attributes.headers.host]' doc:name="vars.host" doc:id="2df3b4fb-8d36-44b6-a58c-86a5121e04f2" variableName="host"/>
+		<ee:transform doc:name="create unique form identifier payload" doc:id="a75b22f0-81c3-408d-a381-13149c2be95d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	uuid : payload.uuid,
+	tokentype : "getformlink"
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="get encrypted identifier" doc:id="8b7b2451-23c2-4916-ac05-839c5efea2ad" name="pgp-encryption-flow"/>
+		<logger level="INFO" doc:name="Logger" doc:id="012c4a28-6926-4ff2-9667-06732c2ae4b6" message='#[vars.host]'/>
+		<ee:transform doc:name="create new link" doc:id="f5becddb-d764-4f93-9fd4-96e194fd166e">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+import * from dw::core::URL
+output application/json
+---
+{
+	link :  vars.host ++ '/api/nous/mulesoftforms/get' ++ '?formid=' ++ payload
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

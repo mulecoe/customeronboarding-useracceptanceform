@@ -1,0 +1,52 @@
+#%RAML 1.0
+title: forms-api
+
+traits:
+  formid:
+    queryParameters: 
+        formid:
+          description: unique formid
+          type: string
+          required: true
+
+/api/nous/mulesoftforms:
+  /generate:
+    description: "creates dymnamic link against uuid"
+    post:
+      body:
+        application/json:
+          example:
+            {
+              uuid: "655765767"
+            }
+      responses:
+        200:
+          body:
+            application/json:
+              example:
+                {
+    "link": "http://localhost:8085/nous/mulesoftforms/get?formid=Q0MllVSkJuRzlWaGVIanBwdGkwQnBQQWMNClhFWkRRbWlvVnRvVnFQalM3N0VtRzZTcFpUNnZPUEE2cEozejEwMD0NCj1sbDZQDQotLS0tLUVORCBQR1AgTUVTU0FHRS0tLS0tDQo="
+}
+             
+                                    
+  /submit:
+    description: "creates documents in DB"
+    post:                
+      responses:
+        201:
+          body:
+            application/json:
+              example:
+                {
+                  "message": "document created successfully"
+                }
+
+  
+  /get:
+    description: "returns html form"
+    get:      
+      is: [formid]
+      responses:
+        200:
+          body:
+            text/html:  
