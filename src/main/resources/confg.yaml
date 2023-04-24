@@ -1,6 +1,6 @@
 sfdc:
   user: "dineshdini075@wise-hawk-jkfgkz.com"
-  password: "Nous@1234"
+  password: "Classmate@1234"
   secToken: "2VX3OTpqzLLRpPoeJHtCn9QD"
   object: "Account"
   aggregratorapiurl: "http://customeronboarding-salesforce-api.sg-s1.cloudhub.io/api/customer/customerdetails"
